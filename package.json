@@ -1,0 +1,19 @@
+{
+  "name": "back-fintech-app",
+  "version": "1.0.0",
+  "description": "back",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "backend",
+    "express"
+  ],
+  "author": "Brian Coronel",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.3",
+    "oracledb": "^5.3.0"
+  }
+}
