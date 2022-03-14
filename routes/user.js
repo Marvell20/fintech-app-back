@@ -36,17 +36,21 @@ route.get('/:docnum', async (req, res) => {
     connection = await getdb();
     const {docnum} = req.params;
     
-    console.log(docnum);
     result = await connection.execute(
-      `
-      BEGIN
-        read_customer(:docnum, :datos);
-      END;`,
-      { 
-        docnum: { val: docnum, dir: oracledb.BIND_IN },
-        datos: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
-      });
-      console.log(result);
+        `
+        BEGIN
+          pck_customers.read_customer(:docnum, :fs_name, :fs_surname, :phone, :doc_num, :doc_type);
+        END;`,
+        { 
+          docnum: docnum,
+          fs_name: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          fs_surname: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          phone: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          doc_num: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          doc_type: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+        },
+        { autoCommit: true}
+      );
   } catch (err) {
     console.error(err);
   } finally {
@@ -60,7 +64,7 @@ route.get('/:docnum', async (req, res) => {
     if (result?.rows?.length == 0) {
         return res.send('query send no rows');
     } else {
-        return res.send(result?.rows);
+        return res.send(result.outBinds);
     }
   }
 })

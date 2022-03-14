@@ -10,7 +10,7 @@ route.get('/all', async (req, res) => {
       console.log("Successfully connected to Oracle Database");
   
       result = await connection.execute(
-        `SELECT * FROM tipo_de_documentos`,
+        `SELECT * FROM DOCTYPES`,
         [],
         { outFormat: oracledb.OUT_FORMAT_OBJECT });
   
