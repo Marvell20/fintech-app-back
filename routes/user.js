@@ -8,24 +8,30 @@ route.get('/all', async (req, res) => {
     try {
       connection = await getdb();
       result = await connection.execute(
-        `SELECT * FROM usuarios`,
+        `SELECT * FROM CUSTOMERS`,
         [],
-        { outFormat: oracledb.OUT_FORMAT_OBJECT });
-  
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      res.send({
+        status:true,
+        message:"OK",
+        result: result.rows
+      })
+
     } catch (err) {
-      console.error(err);
+      res.send(404,{
+        status:false,
+        message:"Ocurrio un error",
+        err: err.message
+      });
     } finally {
       if (connection) {
         try {
           await connection.close();
         } catch (err) {
-          console.error(err);
+          res.send(500,err);
         }
-      }
-      if (result?.rows?.length == 0) {
-          return res.send('query send no rows');
-      } else {
-          return res.send(result?.rows);
       }
     }
 })
@@ -51,20 +57,26 @@ route.get('/:docnum', async (req, res) => {
         },
         { autoCommit: true}
       );
+
+      res.send({
+        status:true,
+        message:"OK",
+        result: result.outBinds
+      })
+
   } catch (err) {
-    console.error(err);
+    res.send(404,{
+      status:false,
+      message:"Ocurrio un error",
+      err: err.message
+    })
   } finally {
     if (connection) {
       try {
         await connection.close();
       } catch (err) {
-        console.error(err);
+        res.send(500,err);
       }
-    }
-    if (result?.rows?.length == 0) {
-        return res.send('query send no rows');
-    } else {
-        return res.send(result.outBinds);
     }
   }
 })
@@ -95,17 +107,17 @@ route.post('/create', async(req, res) => {
       })
 
     } catch (err) {
-      res.send({
-        status:true,
-        message:"OK",
-        err
+      res.send(404,{
+        status:false,
+        message:"Ocurrio un error",
+        err: err.message
       })
     } finally {
       if (connection) {
         try {
           await connection.close();
         } catch (err) {
-          res.send(err)
+          res.send(500,err)
         }
       }
     }
