@@ -7,8 +7,6 @@ route.get('/all', async (req, res) => {
     let connection;
     try {
       connection = await getdb();
-      console.log("Successfully connected to Oracle Database");
-  
       result = await connection.execute(
         `SELECT * FROM usuarios`,
         [],
@@ -32,6 +30,41 @@ route.get('/all', async (req, res) => {
     }
 })
 
+route.get('/:docnum', async (req, res) => {
+  let connection;
+  try {
+    connection = await getdb();
+    const {docnum} = req.params;
+    
+    console.log(docnum);
+    result = await connection.execute(
+      `
+      BEGIN
+        read_customer(:docnum, :datos);
+      END;`,
+      { 
+        docnum: { val: docnum, dir: oracledb.BIND_IN },
+        datos: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+      });
+      console.log(result);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (result?.rows?.length == 0) {
+        return res.send('query send no rows');
+    } else {
+        return res.send(result?.rows);
+    }
+  }
+})
+
 route.post('/create', async(req, res) => {
   let connection;
     try {
@@ -52,10 +85,17 @@ route.post('/create', async(req, res) => {
         { autoCommit: true}
       );
 
-      res.send(req.body)
+      res.send({
+        status:true,
+        message:"OK"
+      })
 
     } catch (err) {
-      res.send(err)
+      res.send({
+        status:true,
+        message:"OK",
+        err
+      })
     } finally {
       if (connection) {
         try {
