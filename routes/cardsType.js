@@ -9,7 +9,7 @@ route.get('/all', async (req, res) => {
       connection = await getdb();
   
       result = await connection.execute(
-        `SELECT * FROM DOCTYPES`,
+        `SELECT * FROM CARDTYPES`,
         [],
         { outFormat: oracledb.OUT_FORMAT_OBJECT });
   

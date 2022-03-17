@@ -13,7 +13,7 @@ route.get('/all', async (req, res) => {
         { outFormat: oracledb.OUT_FORMAT_OBJECT }
       );
 
-      res.send({
+      res.send(200,{
         status:true,
         message:"OK",
         result: result.rows
@@ -36,29 +36,30 @@ route.get('/all', async (req, res) => {
     }
 })
 
-route.get('/:docnum', async (req, res) => {
+route.get('/:userDocNum', async (req, res) => {
   let connection;
   try {
     connection = await getdb();
-    const {docnum} = req.params;
+    const {userDocNum} = req.params;
     
     result = await connection.execute(
         `
         BEGIN
-          pck_customers.read_customer(:docnum, :fs_name, :fs_surname, :phone, :doc_num, :doc_type);
-        END;`,
+          pck_customers.read_customer(:userDocNum, :userId, :userName, :userLastN, :userPhone, :userDocType);
+        END;
+        `,
         { 
-          docnum: docnum,
-          fs_name: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
-          fs_surname: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
-          phone: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
-          doc_num: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
-          doc_type: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+          userDocNum: userDocNum,
+          userId: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
+          userName: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          userLastN: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          userPhone: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          userDocType: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
         },
         { autoCommit: true}
       );
 
-      res.send({
+      res.send(200,{
         status:true,
         message:"OK",
         result: result.outBinds
@@ -87,21 +88,25 @@ route.post('/create', async(req, res) => {
       connection = await getdb();
       const {userName, userLastN, userDocNum, userPhone, userDocType} = req.body;
       
-      const sql = `INSERT INTO USUARIOS(nombres, apellidos, cedula, telefono, tipo_de_documentos_id) values(:nombres, :apellidos, :cedula, :telefono, :doc_id)`;
+      const sql = `
+        BEGIN
+          pck_customers.create_customer(:userName, :userLastN, :userPhone, :userDocNum, :userDocType);
+        END;
+      `;
       
       await connection.execute(
         sql,
         {
-          nombres: userName,
-          apellidos: userLastN,
-          cedula: userDocNum,
-          telefono: userPhone,
-          doc_id: userDocType
+          userName: userName,
+          userLastN: userLastN,
+          userPhone: userPhone,
+          userDocNum: userDocNum,
+          userDocType: userDocType
         },
         { autoCommit: true}
       );
 
-      res.send({
+      res.send(200,{
         status:true,
         message:"OK"
       })
@@ -122,4 +127,95 @@ route.post('/create', async(req, res) => {
       }
     }
 })
+
+route.patch('/update/:userId', async(req, res) => {
+  let connection;
+    try {
+      connection = await getdb();
+      const {userName, userLastN, userPhone, userDocNum, userDocType} = req.body;
+      const {userId} = req.params;
+      
+      const sql = `
+        BEGIN
+          pck_customers.update_customer(:userId, :userName, :userLastN, :userPhone, :userDocNum, :userDocType);
+        END;
+      `;
+      
+      await connection.execute(
+        sql,
+        {
+          userId:userId,
+          userName: userName,
+          userLastN: userLastN,
+          userPhone: userPhone,
+          userDocNum: userDocNum,
+          userDocType: userDocType
+        },
+        { autoCommit: true}
+      );
+
+      res.send(200,{
+        status:true,
+        message:"OK"
+      })
+
+    } catch (err) {
+      res.send(404,{
+        status:false,
+        message:"Ocurrio un error",
+        err: err.message
+      })
+    } finally {
+      if (connection) {
+        try {
+          await connection.close();
+        } catch (err) {
+          res.send(500,err)
+        }
+      }
+    }
+})
+
+route.delete('/delete/:userDocNum', async(req, res) => {
+  let connection;
+    try {
+      connection = await getdb();
+      const {userDocNum} = req.params;
+      
+      const sql = `
+        BEGIN
+          pck_customers.delete_customer(:userDocNum);
+        END;
+      `;
+      
+      await connection.execute(
+        sql,
+        {
+          userDocNum: userDocNum
+        },
+        { autoCommit: true}
+      );
+
+      res.send(200,{
+        status:true,
+        message:"OK"
+      })
+
+    } catch (err) {
+      res.send(404,{
+        status:false,
+        message:"Ocurrio un error",
+        err: err.message
+      })
+    } finally {
+      if (connection) {
+        try {
+          await connection.close();
+        } catch (err) {
+          res.send(500,err)
+        }
+      }
+    }
+})
+
 module.exports = route;
