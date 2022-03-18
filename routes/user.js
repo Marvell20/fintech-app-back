@@ -5,6 +5,7 @@ const route = express.Router()
 
 route.get('/all', async (req, res) => {
     let connection;
+    let result;
     try {
       connection = await getdb();
       result = await connection.execute(
@@ -45,7 +46,7 @@ route.get('/:userDocNum', async (req, res) => {
     result = await connection.execute(
         `
         BEGIN
-          pck_customers.read_customer(:userDocNum, :userId, :userName, :userLastN, :userPhone, :userDocType);
+          pck_customers.read_customer(:userDocNum, :userId, :userName, :userLastN, :userPhone, :userDocType, :v_error);
         END;
         `,
         { 
@@ -54,16 +55,25 @@ route.get('/:userDocNum', async (req, res) => {
           userName: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
           userLastN: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
           userPhone: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
-          userDocType: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+          userDocType: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT },
+          v_error: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT }
         },
         { autoCommit: true}
       );
 
-      res.send(200,{
-        status:true,
-        message:"OK",
-        result: result.outBinds
-      })
+      if (result.outBinds.v_error === null) {
+        res.send(200,{
+            status:true,
+            message:"OK",
+            result: result.outBinds
+        })
+      } else {
+        res.send(400,{
+            status:false,
+            message:"Ocurrio un error",
+            result: result.outBinds.v_error
+        })
+      }
 
   } catch (err) {
     res.send(404,{
@@ -84,32 +94,42 @@ route.get('/:userDocNum', async (req, res) => {
 
 route.post('/create', async(req, res) => {
   let connection;
+  let result;
     try {
       connection = await getdb();
       const {userName, userLastN, userDocNum, userPhone, userDocType} = req.body;
       
       const sql = `
         BEGIN
-          pck_customers.create_customer(:userName, :userLastN, :userPhone, :userDocNum, :userDocType);
+          pck_customers.create_customer(:userName, :userLastN, :userPhone, :userDocNum, :userDocType, :v_error);
         END;
       `;
       
-      await connection.execute(
+      result = await connection.execute(
         sql,
         {
           userName: userName,
           userLastN: userLastN,
           userPhone: userPhone,
           userDocNum: userDocNum,
-          userDocType: userDocType
+          userDocType: userDocType,
+          v_error: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT }
         },
         { autoCommit: true}
       );
 
-      res.send(200,{
-        status:true,
-        message:"OK"
-      })
+      if (result.outBinds.v_error === null) {
+        res.send(200,{
+            status:true,
+            message:"OK"
+        })
+      } else {
+        res.send(400,{
+            status:false,
+            message:"Ocurrio un error",
+            result: result.outBinds.v_error
+        })
+      }
 
     } catch (err) {
       res.send(404,{
@@ -130,6 +150,7 @@ route.post('/create', async(req, res) => {
 
 route.patch('/update/:userId', async(req, res) => {
   let connection;
+  let result;
     try {
       connection = await getdb();
       const {userName, userLastN, userPhone, userDocNum, userDocType} = req.body;
@@ -137,11 +158,11 @@ route.patch('/update/:userId', async(req, res) => {
       
       const sql = `
         BEGIN
-          pck_customers.update_customer(:userId, :userName, :userLastN, :userPhone, :userDocNum, :userDocType);
+          pck_customers.update_customer(:userId, :userName, :userLastN, :userPhone, :userDocNum, :userDocType, :v_error, :v_rows_affected);
         END;
       `;
       
-      await connection.execute(
+      result = await connection.execute(
         sql,
         {
           userId:userId,
@@ -149,15 +170,25 @@ route.patch('/update/:userId', async(req, res) => {
           userLastN: userLastN,
           userPhone: userPhone,
           userDocNum: userDocNum,
-          userDocType: userDocType
+          userDocType: userDocType,
+          v_error: { type: oracledb.DB_TYPE_VARCHAR, dir: oracledb.BIND_OUT },
+          v_rows_affected: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
         },
         { autoCommit: true}
       );
 
-      res.send(200,{
-        status:true,
-        message:"OK"
-      })
+      if (result.outBinds.v_error === null && result.outBinds.v_rows_affected > 0) {
+        res.send(200,{
+            status:true,
+            message:"OK"
+        })
+      } else {
+        res.send(400,{
+            status:false,
+            message:"Ocurrio un error y no se pudo actualizar el usuario",
+            result: {v_error:result.outBinds.v_error,v_rows_affected:result.outBinds.v_rows_affected}
+        })
+      }
 
     } catch (err) {
       res.send(404,{
@@ -178,28 +209,38 @@ route.patch('/update/:userId', async(req, res) => {
 
 route.delete('/delete/:userDocNum', async(req, res) => {
   let connection;
+  let result;
     try {
       connection = await getdb();
       const {userDocNum} = req.params;
       
       const sql = `
         BEGIN
-          pck_customers.delete_customer(:userDocNum);
+          pck_customers.delete_customer(:userDocNum, :v_rows_affected);
         END;
       `;
       
-      await connection.execute(
+      result = await connection.execute(
         sql,
         {
-          userDocNum: userDocNum
+          userDocNum: userDocNum,
+          v_rows_affected: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
         },
         { autoCommit: true}
       );
 
-      res.send(200,{
-        status:true,
-        message:"OK"
-      })
+      if (result.outBinds.v_rows_affected > 0) {
+        res.send(200,{
+            status:true,
+            message:"OK"
+        })
+      } else {
+        res.send(400,{
+            status:false,
+            message:"No existe el usuario que desea eliminar",
+            result: result.outBinds.v_error
+        })
+      }
 
     } catch (err) {
       res.send(404,{
